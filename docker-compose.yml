@@ -1,0 +1,20 @@
+version: '3.7'
+
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/usr/src/app
+    command: streamlit run app.py
+    environment:
+      VIRTUAL_HOST: wybory.janczechowski.com
+      VIRTUAL_PORT: 8501
+      LETSENCRYPT_HOST: wybory.janczechowski.com
+    networks:
+      - nginx-proxy
+
+networks:
+  nginx-proxy:
+    external: true
