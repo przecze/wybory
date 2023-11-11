@@ -356,6 +356,17 @@ if __name__ == '__main__':
     }
     views[st.selectbox('', views.keys())](df)
     st.image('./wybory_name_cloud.png', caption=f'Najpopularniejsze imiona wśród {len(df)} kandydatów i kandydatek do sejmu')
-    #st.write(lists)
-    #st.write(df)
+
+
+    # Add a footer
+    footer_html = """
+        <div style="position: fixed; bottom: 0; left: 0; right: 0; background-color: lightgray; padding: 10px; text-align: center;">
+            <p style="margin: 10px 0; color: black;">&copy; 2023 Jan Czechowski | <a href="https://janczechowski.com" target="_blank">janczechowski.com</a> | <a href="https://github.com/przecze/wybory" target="_blank"><img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" width="20"/></a></p>
+        </div>
+    """
+
+    st.markdown(footer_html, unsafe_allow_html=True)
+
     
+    
+
