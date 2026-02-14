@@ -4,6 +4,8 @@ from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import numpy as np
 import plotly.express as px
+from translations import t, g, get_lang
+
 
 mandates_per_district = {
     1: 12,
@@ -155,7 +157,7 @@ def entropy(df):
     _, center, _ = st.columns(3)
     with center:
         st.image('entropy_formula.svg')
-    st.markdown("**Entropia - matematyczna miara niepewności** - w przypadku wyborów możemy użyć tej miary aby odnaleźć listy na których większość głosów skupiona jest na jednym lub kilku kandydatach (niska entropia) oraz takie na których głosy są bardziej równomiernie rozłożone (wysoka entropia)""")
+    st.markdown(t("entropy_desc"))
     df = df[df['list_num'].isin(list_num_to_color.keys())].copy()
     list_to_color = df.set_index('list').list_num.map(list_num_to_color).drop_duplicates().to_dict()
     df['p'] = df['votes'] / df.groupby(['district', 'list']).votes.transform('sum')
@@ -168,66 +170,65 @@ def entropy(df):
 
     def plot_list(district, list_name):
         df_list = df[df.district.eq(district) & df['list'].eq(list_name)]
-        df_list = df_list[['candidate name', 'votes']].set_axis(['Nazwisko, Imię', 'Otrzymane głosy'], axis=1)
-        fig = px.bar(df_list, x='Nazwisko, Imię', y='Otrzymane głosy')
+        df_list = df_list[['candidate name', 'votes']].set_axis([t('col_name'), t('col_votes_received')], axis=1)
+        fig = px.bar(df_list, x=t('col_name'), y=t('col_votes_received'))
         fig.update_traces(marker_color=list_to_color[list_name])
         st.plotly_chart(fig, use_container_width=True)
 
     col1, col2 = st.columns(2)
-    for text, idx, col in (
-        ('Niska', 0, col1),
-        ('Wysoka', -1, col2)):
+    for text_key, idx, col in (
+        ('entropy_low', 0, col1),
+        ('entropy_high', -1, col2)):
         row = entropy.iloc[idx]
         with col:
-            st.subheader(f"{text} entropia:\n {row['list']}, okręg {row['district']}")
+            st.subheader(t('entropy_subheader', text=t(text_key), list=row['list'], district=row['district']))
             plot_list(row['district'], row['list'])
 
     entropy = entropy[['list', 'district', 'list_num', 'votes', 'entropy', 'leader']].set_axis(
-                      ['Lista', 'Okręg', 'Num. listy', 'Głosy', 'Entropia', 'Lider/Liderka'], axis=1)
+                      [t('col_list'), t('col_district'), t('col_list_num'), t('col_votes'), t('col_entropy'), t('col_leader')], axis=1)
     fig2 = px.scatter(
         entropy,
-        x='Entropia',
-        color='Lista',
-        size='Głosy',
-        y='Num. listy',
+        x=t('col_entropy'),
+        color=t('col_list'),
+        size=t('col_votes'),
+        y=t('col_list_num'),
         hover_data=entropy.columns,
         color_discrete_map=list_to_color)
-    st.subheader('A tak rozkłada się entropia dla wszystkich list')
+    st.subheader(t('entropy_all'))
     st.plotly_chart(fig2, use_container_width=True)
 
     col1, col2 = st.columns(2)
     with col1:
-        district = st.selectbox('Wybierz okręg', sorted(entropy['Okręg'].unique()))
+        district = st.selectbox(t('select_district'), sorted(entropy[t('col_district')].unique()))
     with col2:
         lists = df.groupby('list').votes.sum().sort_values(ascending=False).index
-        list_name = st.selectbox('Wybierz listę', lists)
+        list_name = st.selectbox(t('select_list'), lists)
     plot_list(district, list_name)
 
 def rejected_leaders(df):
-    st.header('Około 38% głosujących polaków głosuje na "jedynki"')
-    x = (df.groupby('position on list').votes.sum()/df.votes.sum()).to_frame('votes share').reset_index().set_axis(['Pozycja na liście', '% głosów'], axis=1)
-    fig = px.line(x[x['Pozycja na liście'].le(20)], x='Pozycja na liście', y='% głosów')
+    st.header(t('rejected_header'))
+    x = (df.groupby('position on list').votes.sum()/df.votes.sum()).to_frame('votes share').reset_index().set_axis([t('col_position_on_list'), t('col_vote_share')], axis=1)
+    fig = px.line(x[x[t('col_position_on_list')].le(20)], x=t('col_position_on_list'), y=t('col_vote_share'))
     fig.layout.yaxis.tickformat = ',.0%'
     st.plotly_chart(fig, use_container_width=True)
-    st.subheader('Ale czy pierwsza pozycja na liście jest gwarancją zwycięstwa?')
+    st.subheader(t('rejected_question'))
 
     df['any_seats'] = df.groupby(['district', 'list']).seat_won.transform(any)
     leads = df[df['position on list'].eq(1) & df.any_seats & ~df.seat_won]
 
-    st.write(f"Odpowiedź brzmi **nie** - w {len(leads)} przypadkach lider(ka) listy nie uzykał(a) mandatu, chociaż mandat przypadł komu innemu na liście. Szczegóły poniżej")
+    st.write(t('rejected_answer', count=len(leads)))
     for _, row in leads.iterrows():
         is_female = row['candidate name'][-1] == 'a'
-        text = "największa zwyciężczyni" if is_female else "największy zwycięzca"
-        st.markdown(f"#### **{row['candidate name']}**, pomimo pierwszego miejsca na liście, nie otrzymał{'a' if is_female else ''} mandatu w okręgu {row['district']}")
-        st.markdown(f"Kandydat{'ka' if is_female else ''} komitetu {row['list']} otrzymał{'a' if is_female else ''} {row['votes']} głosów")
+        st.markdown(g(is_female, 'rejected_no_seat', name=row['candidate name'], district=row['district']))
+        st.markdown(g(is_female, 'rejected_candidate_votes', list=row['list'], votes=row['votes']))
         winner = df[df.district.eq(row.district) & df['list'].eq(row['list']) & df.seat_won].iloc[0]
         is_female2 = winner['candidate name'][-1] == 'a'
-        st.markdown(f"Mandat z tej listy zdobył{'a' if is_female2 else ''} za to **{winner['candidate name']}** startując{'a' if is_female2 else 'y'} z pozycji {winner['position on list']}")
-        st.markdown(f"**{winner['candidate name']}** otrzymał{'a' if is_female2 else ''} {winner['votes']} głosów, o {winner['votes']-row['votes']} więcej niż {row['candidate name']}")
-        with st.expander(f"Wszystkie głosy na listę {row['list_num']} w okręgu {row['district']}"):
+        st.markdown(g(is_female2, 'rejected_winner', name=winner['candidate name'], position=winner['position on list']))
+        st.markdown(g(is_female2, 'rejected_winner_votes', name=winner['candidate name'], votes=winner['votes'], diff=winner['votes']-row['votes'], loser=row['candidate name']))
+        with st.expander(t('rejected_expander', list_num=row['list_num'], district=row['district'])):
             list_df = df[df.district.eq(row.district) & df['list'].eq(row['list'])][['candidate name', 'position on list', 'votes']]
-            list_df = list_df.set_axis(['Nazwisko, Imię', 'Pozycja', 'Otrzymane głosy'], axis=1)
-            fig = px.bar(list_df, x='Nazwisko, Imię', y='Otrzymane głosy', hover_data=list_df.columns)
+            list_df = list_df.set_axis([t('col_name'), t('col_position'), t('col_votes_received')], axis=1)
+            fig = px.bar(list_df, x=t('col_name'), y=t('col_votes_received'), hover_data=list_df.columns)
             fig.update_traces(marker_color=list_num_to_color[row['list_num']])
             st.plotly_chart(fig, use_container_width=True)
 
@@ -235,51 +236,52 @@ def rejected_leaders(df):
 def biggest_winners(df):
     biggest_winner = df[df.seat_won].sort_values('votes').iloc[0]
     is_female = biggest_winner['candidate name'][-1] == 'a'
-    text = "największa zwyciężczyni" if is_female else "największy zwycięzca"
+    text = g(is_female, 'biggest_winner')
     medal_emoji = b"\xf0\x9f\x8f\x85".decode('utf8') 
-    st.subheader(f"{medal_emoji} {text} wyborów {medal_emoji}")
-    st.markdown(f"**{biggest_winner['candidate name']}** zdobył{'a' if is_female else ''} mandat przy zaledwie **{biggest_winner['votes']}** głosach")
-    st.caption('gratulujemy')
+    st.subheader(t('winner_header', emoji=medal_emoji, text=text))
+    st.markdown(g(is_female, 'won_seat', name=biggest_winner['candidate name'], votes=biggest_winner['votes']))
+    st.caption(t('congrats'))
     avg_votes = int(df[df.seat_won]['votes'].mean())
-    st.subheader(f"Przeciętna liczba głosów skutkująca otrzymaniem mandatu to {avg_votes},")
-    st.write("jednakże, w wyniku działania metody d'Hondta do sejmu wchodzą czasem kandydaci i kandydatki ze znacznie mniejszą liczbą głosów")
+    st.subheader(t('avg_votes', avg_votes=avg_votes))
+    st.write(t('dhondt_note'))
     winners = df[df.seat_won].sort_values('votes').head(10)[['candidate name', 'votes', 'list', 'district']]
-    st.write(winners.set_axis(['Nazwisko, Imię', 'liczba głosów', 'lista', 'okręg wyborczy'], axis=1))
-    st.subheader('A tak wygląda przeciętna liczba głosów potrzebna do uzyskania mandatu dla każdego ugrupowania:')
+    st.write(winners.set_axis([t('col_name'), t('col_vote_count'), t('col_list_lower'), t('col_district_lower')], axis=1))
+    st.subheader(t('avg_per_party'))
     st.write(df[df.seat_won].groupby('list').votes.mean().astype(int))
     
     list_to_color = df.set_index('list').list_num.map(list_num_to_color).drop_duplicates().to_dict()
-    plot_df = df[df.seat_won][['votes','list','list_num','candidate name', 'district','position on list']].set_axis(['Głosy', 'Lista','Num. listy','Nazwisko, Imię', 'Okręg', 'Poz. na liście'], axis=1)
-    st.subheader(f"Wszystkie zdobyte mandaty vs. liczba otrzymanych głosów")
+    plot_df = df[df.seat_won][['votes','list','list_num','candidate name', 'district','position on list']].set_axis(
+        [t('col_votes'), t('col_list'), t('col_list_num'), t('col_name'), t('col_district'), t('col_pos_short')], axis=1)
+    st.subheader(t('all_seats'))
     fig2 = px.scatter(
         plot_df,
-        x='Głosy',
-        color='Lista',
-        size='Głosy',
-        y='Num. listy',
+        x=t('col_votes'),
+        color=t('col_list'),
+        size=t('col_votes'),
+        y=t('col_list_num'),
         log_x=True,
         hover_data=plot_df.columns,
         color_discrete_map=list_to_color)
     st.plotly_chart(fig2, use_container_width=True)
 
-    st.subheader("A najwięksi przegrani?")
+    st.subheader(t('biggest_losers'))
     biggest_winner = df[~df.seat_won].sort_values('votes').iloc[-1]
     is_female = biggest_winner['candidate name'][-1] == 'a'
-    text = "największa przegrana" if is_female else "największy przegrany"
+    text = g(is_female, 'biggest_loser')
     medal_emoji = b"\xf0\x9f\x8f\x85".decode('utf8') 
-    st.subheader(f"{medal_emoji} {text} wyborów {medal_emoji}")
-    st.markdown(f"**{biggest_winner['candidate name']}** nie zdobył{'a' if is_female else ''} mandatu pomimo otrzymania **{biggest_winner['votes']}** głosów")
-    st.caption('nie gratulujemy')
-    st.write("Inne porażki")
+    st.subheader(t('loser_header', emoji=medal_emoji, text=text))
+    st.markdown(g(is_female, 'lost_seat', name=biggest_winner['candidate name'], votes=biggest_winner['votes']))
+    st.caption(t('no_congrats'))
+    st.write(t('other_losses'))
     winners = df[~df.seat_won].sort_values('votes', ascending=False).head(10)[['candidate name', 'votes', 'list', 'district']]
     st.write(winners)
 
 def simulator(df):
-    st.subheader("Wyniki wyborów przedstawiają się następująco")
+    st.subheader(t('sim_results'))
     sorting = [3, 6, 2, 99, 4, 5]
     sorting = {l: i for i, l in enumerate(sorting)}
     list_to_color = df.set_index('list').list_num.map(list_num_to_color).drop_duplicates().to_dict()
-    list_to_color['Zjedonoczona opozycja'] = '#808000'
+    list_to_color[t('sim_unified_opposition')] = '#808000'
 
     seats = df[df.seat_won].groupby(['list', 'list_num']).size().to_frame('seats').reset_index()
     seats_base = seats.copy().set_index('list_num').seats.rename('seats_base')
@@ -305,7 +307,7 @@ def simulator(df):
             st.plotly_chart(fig, use_container_width=True)
 
     show_seats(seats)
-    st.subheader("Ale co gdyby coś potoczyło się inaczej? Wybież scenariusz poniżej")
+    st.subheader(t('sim_what_if'))
 
     def sim_below_threshold(df, list_n):
         df_sim = df.copy()
@@ -316,57 +318,56 @@ def simulator(df):
         show_seats(seats)
 
     def unified_sim(df):
-
-        st.subheader('A gdyby poszli razem?')
+        st.subheader(t('sim_unified_header'))
         df_sim = df.copy()
-        df_sim.loc[df_sim['list_num'].isin((6, 2, 3)), 'list'] = 'Zjedonoczona opozycja'
+        df_sim.loc[df_sim['list_num'].isin((6, 2, 3)), 'list'] = t('sim_unified_opposition')
         df_sim.loc[df_sim['list_num'].isin((6, 2, 3)), 'list_num'] = 99
         df_sim['seat_won'] = get_dhondt_seats(df_sim, mandates_per_district)
         seats = df_sim[df_sim.seat_won].groupby(['list', 'list_num']).size().to_frame('seats').reset_index()
         seats['diff'] = (seats.seats - seats.join(seats_base, on='list_num').seats_base).apply(lambda x: '+'+str(x) if x > 0 else ('=' if x==0 else str(x)))
         show_seats(seats)
-        st.markdown("""**UWAGA** symulacja jest bardzo uproszczona, zakłada po prostu,
-                    że wszyscy kandydaci z list 2, 3 i 6 należą do tego samego
-                    komitetu przy podziale mandatów metodą d'Hondta. Liczba głosów
-                    na każdego kandydata nie jest zmieniona. Oczywiście w
-                    rzeczywistości rozkład głosów wyglądałby inaczej, zjednoczona
-                    opozycja mogłaby też umieścić znacznie mniej kandydatów i
-                    kandydatek na jednej wspólnej liście.""")
+        st.markdown(t('sim_unified_note'))
 
     list_to_name = df[['list', 'list_num']].drop_duplicates().set_index('list_num')['list'].to_dict()
-    sims = {f'{list_to_name[n]} poniżej progu wyborczego': n for n in (3, 2, 5)}
-    sims['Wspólna lista opozycji'] = None
-    selected = st.selectbox('Wybierz symulację', sims.keys())
-    if selected == 'Wspólna lista opozycji':
+    sims = {t('sim_below_threshold', name=list_to_name[n]): n for n in (3, 2, 5)}
+    sims[t('sim_unified_list')] = None
+    selected = st.selectbox(t('sim_select'), sims.keys())
+    if selected == t('sim_unified_list'):
         unified_sim(df)
     else:
         sim_below_threshold(df, sims[selected])
 
 if __name__ == '__main__':
-    st.set_page_config(layout="wide", page_title='Wszystko czego NIE musisz wiedzieć o wyborach 2023')
+    st.set_page_config(layout="wide", page_title=t('page_title'))
+
+    # ── Language toggle: compact flag in top-right corner ─────────
+    _spacer, _lang_col = st.columns([0.92, 0.08])
+    with _lang_col:
+        _other = "en" if get_lang() == "pl" else "pl"
+        _flag = "🇬🇧" if _other == "en" else "🇵🇱"
+        if st.button(_flag, help=t('lang_toggle')):
+            st.query_params["lang"] = _other
+            st.rerun()
+
     lists, df = load_results()
-    st.header('Wszystko czego nie musisz wiedzieć o wyborach 2023')
+    st.header(t('page_header'))
     df['seat_won'] = get_dhondt_seats(df, mandates_per_district)
     views = {
-        'Wybierz artykuł': lambda *args:None,
-        'Jedynki odrzucone przez głosujących': rejected_leaders,
-        'Najwięksi zwycięzcy, największe porażki': biggest_winners,
-        'A co by było gdyby...': simulator,
-        'Entropia partyjna': entropy
+        t('view_select'): lambda *args:None,
+        t('view_rejected_leaders'): rejected_leaders,
+        t('view_biggest_winners'): biggest_winners,
+        t('view_simulator'): simulator,
+        t('view_entropy'): entropy,
     }
     views[st.selectbox('', views.keys())](df)
-    st.image('./wybory_name_cloud.png', caption=f'Najpopularniejsze imiona wśród {len(df)} kandydatów i kandydatek do sejmu')
+    st.image('./wybory_name_cloud.png', caption=t('wordcloud_caption', count=len(df)))
 
 
     # Add a footer
     footer_html = """
         <div style="position: fixed; bottom: 0; left: 0; right: 0; background-color: lightgray; padding: 10px; text-align: center;">
-            <p style="margin: 10px 0; color: black;">&copy; 2023 Jan Czechowski | <a href="https://janczechowski.com" target="_blank">janczechowski.com</a> | <a href="https://github.com/przecze/wybory" target="_blank"><img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" width="20"/></a></p>
+            <p style="margin: 10px 0; color: black;">&copy; 2023 Jan Czechowski | <a href="https://janczechowski.com" target="_blank">janczechowski.com</a> | <a href="https://github.com/przecze/wybory" target="_blank"><img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" width="20"/></a> | Data source: <a href="https://sejmsenat2023.pkw.gov.pl/sejmsenat2023/pl/dane_w_arkuszach" target="_blank">PKW</a></p>
         </div>
     """
 
     st.markdown(footer_html, unsafe_allow_html=True)
-
-    
-    
-
