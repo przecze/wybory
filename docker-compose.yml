@@ -1,13 +1,13 @@
-version: '3.7'
-
 services:
   app:
-    build: 
-      context: .
-      dockerfile: Dockerfile
+    image: python:3.13-slim
+    working_dir: /app
     volumes:
-      - ./:/usr/src/app
-    command: streamlit run app.py
+      - ./:/app
+    command: >
+      bash -c "pip install uv==0.9.28 &&
+               uv pip install --system --no-cache-dir -r requirements.txt &&
+               streamlit run app.py"
     environment:
       VIRTUAL_HOST: wybory.janczechowski.com
       VIRTUAL_PORT: 8501

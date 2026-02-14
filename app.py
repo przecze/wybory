@@ -338,7 +338,7 @@ def simulator(df):
         sim_below_threshold(df, sims[selected])
 
 if __name__ == '__main__':
-    st.set_page_config(layout="wide", page_title=t('page_title'))
+    st.set_page_config(layout="wide", page_title=t('page_title'), page_icon="🇵🇱")
 
     # ── Language toggle: compact flag in top-right corner ─────────
     _spacer, _lang_col = st.columns([0.92, 0.08])
@@ -359,7 +359,7 @@ if __name__ == '__main__':
         t('view_simulator'): simulator,
         t('view_entropy'): entropy,
     }
-    views[st.selectbox('', views.keys())](df)
+    views[st.selectbox(t('view_select'), views.keys(), label_visibility='collapsed')](df)
     st.image('./wybory_name_cloud.png', caption=t('wordcloud_caption', count=len(df)))
 
 
