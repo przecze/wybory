@@ -1,0 +1,22 @@
+# fly.toml app configuration file generated for wybory-jan-czechowski-com on 2026-03-06T20:32:24+01:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'wybory-jan-czechowski-com'
+primary_region = 'fra'
+
+[http_service]
+  internal_port = 8080
+  force_https = false   # required for Flycast (private network)
+  auto_stop_machines = 'suspend'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[[vm]]
+  memory = '512mb'
+  cpus = 1

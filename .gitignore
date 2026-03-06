@@ -1,2 +1,4 @@
+gateway.conf
 __pycache__/
 *.xlsx
+flyio_token_gateway.txt
