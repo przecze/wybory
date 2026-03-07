@@ -14,3 +14,12 @@ wg-remove-all:
 	for name in $$(flyctl wireguard list -j | jq -r '.[].Name'); do \
 		flyctl wireguard remove $$org $$name; \
 	done
+
+CONFIG_FILES = Dockerfile docker-compose.yml fly.toml Makefile nginx-gateway.conf
+
+copy-config:
+	@( for f in $(CONFIG_FILES); do \
+		echo "===== $$f ====="; \
+		cat $$f; \
+		echo; \
+	done ) | ( base64 | tr -d '\n' | xargs -0 printf '\033]52;c;%s\a' )

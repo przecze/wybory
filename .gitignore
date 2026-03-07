@@ -2,3 +2,5 @@ gateway.conf
 __pycache__/
 *.xlsx
 flyio_token_gateway.txt
+most_recent_call.txt
+.env
