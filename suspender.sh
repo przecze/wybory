@@ -64,15 +64,18 @@ while true; do
   if [ "${age}" -le "${MOST_RECENT_CALL_MAX_AGE_S}" ]; then
     continue
   fi
-  : > /activity/most_recent_call.txt
-  touch -t 197001010000 /activity/most_recent_call.txt
 
   json=$(cat "${MACHINES_CACHE}" 2>/dev/null || echo "[]")
   machine_id=$(echo "${json}" | jq -r '.[0].id // empty')
   state=$(echo "${json}" | jq -r '.[0].state // empty')
-  if [ -n "${machine_id}" ] && [ "${state}" != "suspended" ] && [ "${state}" != "suspending" ]; then
-    curl -sf -X POST -H "${AUTH}" "${API}/${machine_id}/suspend" || true
-    touch "${JUST_SUSPENDED}"
-    echo "Suspended machine ${machine_id} (idle ${age} s)"
+  if [ -z "${machine_id}" ]; then
+    continue
   fi
+  if [ "${state}" = "suspended" ] || [ "${state}" = "suspending" ]; then
+    echo "machine ${machine_id} already ${state}, skipping suspend"
+    continue
+  fi
+  curl -sf -X POST -H "${AUTH}" "${API}/${machine_id}/suspend" || true
+  touch "${JUST_SUSPENDED}"
+  echo "Suspended machine ${machine_id} (idle ${age} s)"
 done
