@@ -10,15 +10,15 @@ services:
       - -c
       - |
         apk add --no-cache curl jq
-        curl -L https://fly.io/install.sh | sh
-        export PATH=/root/.fly/bin:$$PATH
-        export FLY_API_TOKEN=$$(cat /run/secrets/fly_token)
+        FLY_API_TOKEN=$$(cat /run/secrets/fly_token)
+        API="https://api.machines.dev/v1/apps/$$FLY_APP_NAME/machines"
+        AUTH="Authorization: Bearer $$FLY_API_TOKEN"
         while true; do
-          json=$$(flyctl machine list -a $$FLY_APP_NAME -j)
+          json=$$(curl -sf -H "$$AUTH" "$$API")
           machine_id=$$(echo "$$json" | jq -r '.[0].id // empty')
           state=$$(echo "$$json" | jq -r '.[0].state // empty')
           if [ -n "$$machine_id" ] && [ "$$state" != "suspended" ] && [ "$$state" != "suspending" ]; then
-            flyctl machine suspend $$machine_id -a $$FLY_APP_NAME || true
+            curl -sf -X POST -H "$$AUTH" "$$API/$$machine_id/suspend" || true
             echo "Suspended machine $$machine_id"
           fi
           sleep 60
