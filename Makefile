@@ -1,6 +1,6 @@
 wg-create:
 	rm -f gateway.conf
-	FLY_API_TOKEN=$$(cat flyio_token_gateway.txt) flyctl wireguard create personal fra gateway gateway.conf
+	FLY_API_TOKEN=$$(cat flyio_token_gateway.txt) flyctl wireguard create personal fra wybory-gateway gateway.conf
 
 wg-list:
 	FLY_API_TOKEN=$$(cat flyio_token_gateway.txt) flyctl wireguard list
