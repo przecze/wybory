@@ -23,15 +23,13 @@ services:
     restart: unless-stopped
 
   gateway:
-    image: nginx:alpine
+    image: nginx:1.31.0-alpine
     entrypoint: ["sh", "/entrypoint.sh"]
     devices:
       - /dev/net/tun:/dev/net/tun
     cap_add:
       - NET_RAW
       - NET_ADMIN
-    ports:
-      - "127.0.0.1:8080:80"
     volumes:
       - ./entrypoint.gateway.sh:/entrypoint.sh:ro
       - ./gateway.conf:/etc/wireguard/gateway.conf:ro
